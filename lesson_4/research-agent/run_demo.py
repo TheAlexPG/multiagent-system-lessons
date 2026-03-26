@@ -1,8 +1,9 @@
-"""Run agent with rich mocked tools, capture the report."""
+"""Run agent with rich mocked tools, capture report + debug report."""
 
 import json
 from unittest.mock import patch, MagicMock
 from pathlib import Path
+from datetime import datetime
 
 # ── Rich mock data per query ─────────────────────────────────
 
@@ -153,7 +154,7 @@ def mock_read_url(url):
     for key, text in PAGE_DB.items():
         if key in url:
             return text
-    return "Page content not available for this URL."
+    return "Error: Page content not available for this URL."
 
 
 def mock_write_report(filename, content):
@@ -164,6 +165,126 @@ def mock_write_report(filename, content):
     path = OUTPUT_DIR / filename
     path.write_text(content, encoding="utf-8")
     return f"Report saved to {path.resolve()}"
+
+
+# ── Debug report generator ────────────────────────────────────
+
+def generate_debug_report(agent) -> str:
+    """Generate a Markdown debug report from agent's turn logs."""
+    lines = [
+        "# Debug Report — Research Agent ReAct Loop",
+        "",
+        f"> Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  ",
+        f"> Model: `{agent.client._base_url}` → `{__import__('config').LLM_MODEL}`  ",
+        f"> Max iterations: {__import__('config').MAX_ITERATIONS}",
+        "",
+    ]
+
+    for turn_idx, turn in enumerate(agent.turn_logs, 1):
+        lines.append(f"## Turn {turn_idx}")
+        lines.append("")
+        lines.append(f"**User query:** {turn.user_message}")
+        lines.append("")
+
+        # Summary stats
+        total_tools = len(turn.tool_calls)
+        errors = sum(1 for tc in turn.tool_calls if tc.error)
+        unique_tools = set(tc.name for tc in turn.tool_calls)
+        tool_counts = {}
+        for tc in turn.tool_calls:
+            tool_counts[tc.name] = tool_counts.get(tc.name, 0) + 1
+
+        lines.append("### Summary")
+        lines.append("")
+        lines.append(f"| Metric | Value |")
+        lines.append(f"|--------|-------|")
+        lines.append(f"| Total tool calls | **{total_tools}** |")
+        lines.append(f"| Errors | **{errors}** |")
+        lines.append(f"| ReAct steps (LLM calls) | **{turn.total_steps}** |")
+        lines.append(f"| Total duration | **{turn.total_duration_ms:.0f} ms** ({turn.total_duration_ms / 1000:.1f} s) |")
+        lines.append(f"| Hit iteration limit | {'Yes ⚠️' if turn.hit_limit else 'No ✅'} |")
+        lines.append("")
+
+        # Tool usage breakdown
+        lines.append("### Tool usage breakdown")
+        lines.append("")
+        lines.append("| Tool | Calls | Errors | Avg duration |")
+        lines.append("|------|-------|--------|--------------|")
+        for tool_name in sorted(unique_tools):
+            calls = [tc for tc in turn.tool_calls if tc.name == tool_name]
+            n = len(calls)
+            errs = sum(1 for c in calls if c.error)
+            avg_ms = sum(c.duration_ms for c in calls) / n
+            lines.append(f"| `{tool_name}` | {n} | {errs} | {avg_ms:.0f} ms |")
+        lines.append("")
+
+        # Step-by-step trace
+        lines.append("### Step-by-step trace")
+        lines.append("")
+
+        current_step = 0
+        for tc in turn.tool_calls:
+            if tc.step != current_step:
+                current_step = tc.step
+                lines.append(f"#### Step {tc.step}")
+                lines.append("")
+
+            status = "❌ ERROR" if tc.error else "✅ OK"
+            args_str = json.dumps(tc.args, ensure_ascii=False, indent=2)
+            result_preview = tc.result[:500]
+            if len(tc.result) > 500:
+                result_preview += "\n\n[... truncated ...]"
+
+            lines.append(f"**`{tc.name}`** — {status} ({tc.duration_ms:.0f} ms)")
+            lines.append("")
+            lines.append("<details>")
+            lines.append(f"<summary>Arguments</summary>")
+            lines.append("")
+            lines.append("```json")
+            lines.append(args_str)
+            lines.append("```")
+            lines.append("</details>")
+            lines.append("")
+            lines.append("<details>")
+            lines.append(f"<summary>Result ({len(tc.result)} chars)</summary>")
+            lines.append("")
+            lines.append("```")
+            lines.append(result_preview)
+            lines.append("```")
+            lines.append("</details>")
+            lines.append("")
+
+        # Final answer (preview)
+        lines.append("### Final answer")
+        lines.append("")
+        answer_preview = turn.final_answer[:800] if turn.final_answer else "(empty)"
+        if len(turn.final_answer) > 800:
+            answer_preview += "\n\n[... truncated ...]"
+        lines.append("```")
+        lines.append(answer_preview)
+        lines.append("```")
+        lines.append("")
+
+        # Conversation context size
+        total_chars = sum(
+            len(m.get("content", ""))
+            for m in agent.messages
+            if m.get("content")
+        )
+        total_messages = len(agent.messages)
+        lines.append("### Context window usage")
+        lines.append("")
+        lines.append(f"| Metric | Value |")
+        lines.append(f"|--------|-------|")
+        lines.append(f"| Messages in context | {total_messages} |")
+        lines.append(f"| Total chars in context | ~{total_chars:,} |")
+        lines.append(f"| Estimated tokens | ~{total_chars // 4:,} |")
+        lines.append("")
+
+    lines.append("---")
+    lines.append("*Generated by Research Agent v2 debug logger*")
+
+    return "\n".join(lines)
 
 
 def run():
@@ -184,13 +305,22 @@ def run():
         answer = agent.chat(query)
         print(f"\nAgent: {answer}")
 
-        # Fallback: if agent didn't call write_report, save answer
+        # Save debug report
         from config import OUTPUT_DIR
-        report_path = OUTPUT_DIR / "report.md"
-        if not report_path.exists() and answer:
-            OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+        debug_md = generate_debug_report(agent)
+        debug_path = OUTPUT_DIR / "debug_report.md"
+        debug_path.write_text(debug_md, encoding="utf-8")
+        print(f"\n>>> Debug report saved to {debug_path}")
+
+        # Fallback: if agent didn't call write_report, save answer
+        # Check if any .md file besides debug was created
+        reports = [f for f in OUTPUT_DIR.iterdir() if f.suffix == ".md" and f.name != "debug_report.md"]
+        if not reports and answer:
+            report_path = OUTPUT_DIR / "report.md"
             report_path.write_text(answer, encoding="utf-8")
-            print(f"\n>>> Fallback: saved answer to {report_path}")
+            print(f">>> Fallback: saved answer to {report_path}")
 
 
 if __name__ == "__main__":

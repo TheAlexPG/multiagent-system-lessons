@@ -1,0 +1,72 @@
+Retrieval-Augmented Generation (RAG): A Comprehensive Overview
+
+1. Introduction
+
+Retrieval-Augmented Generation (RAG) is a technique that enhances large language models (LLMs) by providing them with relevant external knowledge at inference time. Instead of relying solely on the knowledge stored in model parameters during training, RAG systems retrieve relevant documents from an external knowledge base and use them as context for generation.
+
+The key motivation behind RAG is to address several limitations of standalone LLMs:
+- Knowledge cutoff: LLMs only know information up to their training date
+- Hallucinations: LLMs may generate plausible but incorrect information
+- Lack of source attribution: LLMs cannot cite specific sources for their claims
+- Domain-specific knowledge: General-purpose LLMs may lack specialized knowledge
+
+2. RAG Architecture
+
+A typical RAG system consists of three main components:
+
+2.1 Indexing Pipeline
+The indexing pipeline prepares documents for efficient retrieval:
+- Document loading: Ingest documents from various sources (PDFs, web pages, databases)
+- Text splitting: Break documents into smaller chunks (typically 256-1024 tokens)
+- Embedding: Convert text chunks into dense vector representations using embedding models
+- Storage: Store embeddings in a vector database (FAISS, Pinecone, Weaviate, Qdrant)
+
+2.2 Retrieval Component
+When a user query arrives, the retrieval component:
+- Embeds the query using the same embedding model
+- Searches the vector database for the most similar chunks
+- Returns the top-k most relevant chunks
+
+2.3 Generation Component
+The generation component:
+- Constructs a prompt combining the user query with retrieved context
+- Sends the augmented prompt to the LLM
+- Returns the generated response, grounded in the retrieved information
+
+3. Chunking Strategies
+
+Effective chunking is critical for RAG performance:
+
+3.1 Fixed-size chunking
+- Split text into chunks of N tokens/characters
+- Simple but may break semantic boundaries
+- Common sizes: 256, 512, 1024 tokens
+
+3.2 Recursive character splitting
+- Split by paragraph, then sentence, then word boundaries
+- Preserves natural text structure
+- More semantically coherent chunks
+
+3.3 Semantic chunking
+- Use embedding similarity to determine chunk boundaries
+- Keeps semantically related content together
+- More compute-intensive but higher quality
+
+4. Embedding Models
+
+Popular embedding models for RAG:
+- OpenAI text-embedding-3-small/large: High quality, API-based
+- BGE (BAAI): Open-source, competitive with commercial models
+- E5 (Microsoft): Good multilingual support
+- all-MiniLM-L6-v2: Lightweight, fast, good for prototyping
+- Cohere embed-v3: Commercial, supports multiple languages
+
+5. Evaluation
+
+RAG systems are typically evaluated on:
+- Faithfulness: Are the generated answers supported by retrieved context?
+- Answer relevancy: Does the answer address the question?
+- Context precision: Are the retrieved chunks relevant to the question?
+- Context recall: Are all relevant chunks retrieved?
+
+The RAGAS framework provides automated metrics for RAG evaluation.

@@ -1,0 +1,119 @@
+Advanced Retrieval Strategies for RAG Systems
+
+1. Naive RAG (Baseline)
+
+Naive RAG is the simplest retrieval approach:
+- Documents are split into fixed-size chunks
+- Each chunk is embedded and stored in a vector database
+- At query time, top-k similar chunks are retrieved via cosine similarity
+- Retrieved chunks are passed directly to the LLM as context
+
+Limitations of Naive RAG:
+- Context fragmentation at chunk boundaries
+- Irrelevant content within chunks (noise)
+- No consideration of document structure
+- Poor performance on multi-hop questions
+- Limited retrieval precision for complex queries
+
+2. Sentence-Window Retrieval
+
+Sentence-window retrieval improves upon naive RAG by decoupling the embedding unit from the context unit:
+
+How it works:
+- Documents are split into individual sentences
+- Each sentence is embedded separately for precise matching
+- Surrounding sentences (window) are stored as metadata
+- During retrieval, the matched sentence is replaced with its full window
+
+Key parameters:
+- window_size: Number of sentences before and after (typically 2-5)
+- Larger windows provide more context but may include noise
+
+Performance:
+- 15-20% improvement in answer relevancy over naive RAG
+- 10-15% improvement in faithfulness
+- Best for factoid and single-hop questions
+- Slight increase in index size (one entry per sentence)
+
+3. Parent-Child Retrieval
+
+Parent-child retrieval uses a hierarchical chunking strategy:
+
+Architecture:
+- Parent chunks: Large blocks (1024-2048 tokens) — full sections or paragraphs
+- Child chunks: Small blocks (128-256 tokens) — sentences or short passages
+- Only child chunks are embedded and indexed
+- When a child is retrieved, the full parent chunk is returned to the LLM
+
+Auto-merging variant:
+- If multiple children from the same parent are retrieved, they merge into the parent
+- Threshold parameter controls when merging happens
+- Reduces redundancy in context
+
+Performance:
+- 18-25% improvement on multi-hop questions over naive RAG
+- Excellent for technical documentation and structured documents
+- Higher setup complexity
+- Larger storage requirements (both parent and child chunks stored)
+
+4. Hybrid Search (Semantic + BM25)
+
+Hybrid search combines dense (semantic) and sparse (keyword) retrieval:
+
+Dense retrieval (semantic):
+- Uses embedding models to capture semantic meaning
+- Good for paraphrased queries and conceptual similarity
+- May miss exact keyword matches
+
+Sparse retrieval (BM25):
+- Traditional keyword matching algorithm
+- Good for exact term matches, names, acronyms
+- Misses semantic relationships
+
+Ensemble approach:
+- Run both dense and sparse retrieval
+- Merge results using Reciprocal Rank Fusion (RRF) or weighted combination
+- Typically: 0.5-0.7 weight for semantic, 0.3-0.5 for BM25
+
+Benefits:
+- Covers both semantic and lexical matching
+- More robust across query types
+- Improves recall significantly
+
+5. Cross-Encoder Reranking
+
+Reranking is a post-retrieval step that improves precision:
+
+How it works:
+- Initial retrieval returns top-N candidates (N=20-50)
+- A cross-encoder model scores each (query, passage) pair
+- Results are re-sorted by cross-encoder scores
+- Top-k results (k=3-5) are returned to the LLM
+
+Cross-encoder vs Bi-encoder:
+- Bi-encoder: Embeds query and passage separately, fast but less accurate
+- Cross-encoder: Processes query and passage together, slower but more accurate
+- Use bi-encoder for initial retrieval (speed), cross-encoder for reranking (accuracy)
+
+Popular reranker models:
+- BAAI/bge-reranker-base: Open-source, good quality
+- cross-encoder/ms-marco-MiniLM-L-6-v2: Lightweight, fast
+- Cohere rerank-v3: Commercial, high quality
+- Jina reranker-v2: Open-source, multilingual
+
+6. Advanced Techniques
+
+6.1 Query Transformation
+- Query expansion: Add related terms to improve recall
+- HyDE: Generate hypothetical document, use as query
+- Sub-query decomposition: Break complex queries into simpler ones
+
+6.2 Contextual Compression
+- Remove irrelevant parts from retrieved chunks
+- Use LLM to extract only relevant sentences
+- Reduces noise in context
+
+6.3 Multi-Vector Retrieval
+- Generate multiple embeddings per document (summary, questions, keywords)
+- Search across multiple representation spaces
+- Better capture of document semantics
