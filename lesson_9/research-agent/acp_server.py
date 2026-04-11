@@ -172,7 +172,7 @@ async def planner_agent(
     user_text = user_text.strip() or "No input provided"
 
     result = await run_agent("Planner", PLANNER_PROMPT, user_text, max_steps=8)
-    yield {"role": "agent", "parts": [{"content": result, "content_type": "text/plain"}]}
+    yield Message(parts=[MessagePart(content=result, content_type="text/plain")])
 
 
 @server.agent(name="researcher", description="Research Agent: executes search queries across web, knowledge base, and project files.")
@@ -189,7 +189,7 @@ async def researcher_agent(
     user_text = user_text.strip() or "No input provided"
 
     result = await run_agent("Researcher", RESEARCHER_PROMPT, user_text, max_steps=12)
-    yield {"role": "agent", "parts": [{"content": result, "content_type": "text/plain"}]}
+    yield Message(parts=[MessagePart(content=result, content_type="text/plain")])
 
 
 @server.agent(name="critic", description="Critic Agent: evaluates research quality on freshness, completeness, and structure.")
@@ -206,7 +206,7 @@ async def critic_agent(
     user_text = user_text.strip() or "No input provided"
 
     result = await run_agent("Critic", CRITIC_PROMPT, user_text, max_steps=6)
-    yield {"role": "agent", "parts": [{"content": result, "content_type": "text/plain"}]}
+    yield Message(parts=[MessagePart(content=result, content_type="text/plain")])
 
 
 # -- Main ------------------------------------------------------------------

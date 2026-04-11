@@ -9,12 +9,10 @@ from __future__ import annotations
 import asyncio
 import json
 
+import httpx
 from mcp import ClientSession
 from mcp.client.sse import sse_client
 from openai import OpenAI
-
-from acp_sdk.client import Client as ACPClient
-from acp_sdk.models import Message, MessagePart
 
 from config import (
     ACP_PORT,
@@ -44,22 +42,23 @@ class Supervisor:
         ]
 
     async def _call_acp_agent(self, agent_name: str, text: str) -> str:
-        """Call an ACP agent and return its response text."""
-        async with ACPClient(base_url=self.acp_url) as acp:
-            run = await acp.run_sync(
-                agent=agent_name,
-                input=[Message(parts=[MessagePart(content=text, content_type="text/plain")])],
-            )
-            # Extract text from output messages
-            parts = []
-            if run.output:
-                for msg in run.output:
-                    for part in msg.parts:
-                        if hasattr(part, "content"):
-                            parts.append(part.content)
-                        elif isinstance(part, str):
-                            parts.append(part)
-            return "\n".join(parts) if parts else "(no response)"
+        """Call an ACP agent via REST and return its response text."""
+        payload = {
+            "agent_name": agent_name,
+            "input": [{"role": "user", "parts": [{"content": text, "content_type": "text/plain"}]}],
+            "mode": "sync",
+        }
+        async with httpx.AsyncClient(timeout=180) as http:
+            resp = await http.post(f"{self.acp_url}/runs", json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+
+        parts = []
+        for msg in data.get("output", []):
+            for part in msg.get("parts", []):
+                if "content" in part:
+                    parts.append(part["content"])
+        return "\n".join(parts) if parts else "(no response)"
 
     async def _call_report_mcp(self, tool_name: str, arguments: dict) -> str:
         """Call a tool on the ReportMCP server."""
