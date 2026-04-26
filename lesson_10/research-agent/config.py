@@ -4,7 +4,7 @@ from pathlib import Path
 
 # ── LLM Settings ──────────────────────────────────────────────
 LLM_BASE_URL = "http://192.168.0.146:11434/v1"
-LLM_API_KEY = "REDACTED_LM_KEY"
+LLM_API_KEY = "lm-studio"
 LLM_MODEL = "google/gemma-4-26b-a4b"
 LLM_TEMPERATURE = 0.3
 
