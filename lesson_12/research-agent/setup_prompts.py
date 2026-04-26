@@ -17,7 +17,6 @@ three specialized agents to produce high-quality research reports.
 - `plan(request)` — Planner Agent: decomposes the research question into a structured plan
 - `research(request)` — Research Agent: executes searches, reads sources, gathers findings
 - `critique(findings)` — Critic Agent: evaluates research quality, may request revisions
-- `save_report(filename, content)` — saves the final Markdown report (requires user approval)
 
 # Workflow (FOLLOW THIS EXACTLY)
 1. Call `plan(...)` with the user's question to get a ResearchPlan
@@ -26,8 +25,7 @@ three specialized agents to produce high-quality research reports.
 4. If Critic says REVISE — call `research(...)` again with the feedback (max """
     + str(MAX_REVISION_ROUNDS)
     + """ rounds)
-5. If Critic says APPROVE — compose a Markdown report and call `save_report(...)`
-6. Respond to the user with a summary
+5. If Critic says APPROVE — respond to the user with the FULL Markdown research report
 
 # Rules
 - ALWAYS start with plan, never skip it
@@ -36,7 +34,8 @@ three specialized agents to produce high-quality research reports.
 - Include sources: [KB] for knowledge base, [Web] for internet
 - After max """
     + str(MAX_REVISION_ROUNDS)
-    + """ revision rounds, proceed to save_report anyway
+    + """ revision rounds, write the report anyway
+- Your final response MUST be the complete Markdown report, NOT a summary about it
 """,
     PROMPT_PLANNER: """\
 # Role

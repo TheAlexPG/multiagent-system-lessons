@@ -17,7 +17,6 @@ from config import (
     MAX_ITERATIONS,
     PROMPT_SUPERVISOR,
     SUPERVISOR_TOOL_SCHEMAS,
-    MAX_REVISION_ROUNDS,
 )
 from langfuse_client import get_prompt
 from agents.planner import plan
@@ -33,7 +32,7 @@ SUPERVISOR_TOOLS = {
 
 
 class Supervisor:
-    """Supervisor agent with HITL gating on save_report. Fully traced via Langfuse."""
+    """Supervisor agent. Final response = full Markdown report in chat."""
 
     def __init__(self):
         self.client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
@@ -41,13 +40,11 @@ class Supervisor:
         self.messages: list[dict] = [
             {"role": "system", "content": prompt_text},
         ]
-        # Track outputs for Langfuse trace
         self.last_research_output: str = ""
-        self.last_report_content: str = ""
 
     @observe(name="Supervisor")
     def chat(self, user_message: str) -> str:
-        """Run full supervisor turn. Creates a Langfuse span for the entire turn."""
+        """Run full supervisor turn. Returns the complete report as final answer."""
         self.messages.append({"role": "user", "content": user_message})
         self.last_research_output = ""
 
@@ -72,6 +69,7 @@ class Supervisor:
                 ]
             self.messages.append(msg_dict)
 
+            # No tool calls = final answer (the full report)
             if not msg.tool_calls:
                 return msg.content or ""
 
@@ -82,24 +80,17 @@ class Supervisor:
                 except json.JSONDecodeError:
                     args = {}
 
-                if name == "save_report":
-                    result = self._hitl_save_report(args)
+                func = SUPERVISOR_TOOLS.get(name)
+                if func is None:
+                    result = f"Error: unknown tool '{name}'"
                 else:
-                    func = SUPERVISOR_TOOLS.get(name)
-                    if func is None:
-                        result = f"Error: unknown tool '{name}'"
-                    else:
-                        try:
-                            result = str(func(**args))
-                        except Exception as e:
-                            result = f"Error in {name}: {e}"
+                    try:
+                        result = str(func(**args))
+                    except Exception as e:
+                        result = f"Error in {name}: {e}"
 
-                # Track outputs for Langfuse trace
                 if name == "research" and result:
                     self.last_research_output = result
-                if name == "save_report" and not result.startswith("User"):
-                    # Capture the report content as the main output
-                    self.last_report_content = args.get("content", "")
 
                 args_preview = json.dumps(args, ensure_ascii=False)
                 if len(args_preview) > 80:
@@ -111,35 +102,3 @@ class Supervisor:
                 self.messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
 
         return "Reached maximum steps."
-
-    def _hitl_save_report(self, args: dict) -> str:
-        """Human-in-the-loop gate for save_report."""
-        filename = args.get("filename", "report.md")
-        content = args.get("content", "")
-
-        print("\n" + "=" * 60)
-        print("  ⏸️  ACTION REQUIRES APPROVAL")
-        print("=" * 60)
-        print(f"  Tool:     save_report")
-        print(f"  Filename: {filename}")
-        print(f"  Content:  ({len(content)} chars)")
-        print("-" * 60)
-        preview = content[:500] + ("..." if len(content) > 500 else "")
-        print(preview)
-        print("-" * 60)
-
-        while True:
-            choice = input("\n  👉 approve / edit / reject: ").strip().lower()
-            if choice == "approve":
-                from tools import save_report
-                result = save_report(filename, content)
-                print(f"  ✅ {result}")
-                return result
-            elif choice == "edit":
-                feedback = input("  ✏️  Your feedback: ").strip()
-                return f"User requested edits: {feedback}. Please revise the report and call save_report again."
-            elif choice == "reject":
-                print("  ❌ Report rejected.")
-                return "User rejected the report. Do not save it."
-            else:
-                print("  Please type 'approve', 'edit', or 'reject'")

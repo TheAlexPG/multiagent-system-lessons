@@ -15,17 +15,12 @@ def handle_query(supervisor: Supervisor, user_input: str) -> str:
     """Handle a single user query.
 
     Langfuse trace:
-      input  = user's question (set explicitly via set_current_trace_io)
-      output = researcher's findings (the actual research content)
+      input  = user's question
+      output = full Markdown report (supervisor's final answer)
     """
     langfuse.set_current_trace_io(input=user_input)
-
     final_answer = supervisor.chat(user_input)
-
-    # Trace output = full report content (what evaluators should judge)
-    output = supervisor.last_report_content or supervisor.last_research_output or final_answer
-    langfuse.set_current_trace_io(output=output)
-
+    langfuse.set_current_trace_io(output=final_answer)
     return final_answer
 
 

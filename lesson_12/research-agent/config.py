@@ -170,19 +170,4 @@ SUPERVISOR_TOOL_SCHEMAS = [
             },
         },
     },
-    {
-        "type": "function",
-        "function": {
-            "name": "save_report",
-            "description": "Save the final Markdown report. Requires user approval.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "filename": {"type": "string", "description": "Filename (e.g. 'report.md')"},
-                    "content": {"type": "string", "description": "Full Markdown content"},
-                },
-                "required": ["filename", "content"],
-            },
-        },
-    },
 ]
