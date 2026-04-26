@@ -41,10 +41,11 @@ class Supervisor:
         self.messages: list[dict] = [
             {"role": "system", "content": prompt_text},
         ]
-        # Track last research output for Langfuse trace
+        # Track outputs for Langfuse trace
         self.last_research_output: str = ""
+        self.last_report_content: str = ""
 
-    @observe(name="supervisor_turn")
+    @observe(name="Supervisor")
     def chat(self, user_message: str) -> str:
         """Run full supervisor turn. Creates a Langfuse span for the entire turn."""
         self.messages.append({"role": "user", "content": user_message})
@@ -56,7 +57,7 @@ class Supervisor:
                 messages=self.messages,
                 tools=SUPERVISOR_TOOL_SCHEMAS,
                 temperature=LLM_TEMPERATURE,
-                name=f"supervisor_step_{step}",
+                name="Supervisor",
             )
             msg = response.choices[0].message
 
@@ -93,9 +94,12 @@ class Supervisor:
                         except Exception as e:
                             result = f"Error in {name}: {e}"
 
-                # Track research output
+                # Track outputs for Langfuse trace
                 if name == "research" and result:
                     self.last_research_output = result
+                if name == "save_report" and not result.startswith("User"):
+                    # Capture the report content as the main output
+                    self.last_report_content = args.get("content", "")
 
                 args_preview = json.dumps(args, ensure_ascii=False)
                 if len(args_preview) > 80:

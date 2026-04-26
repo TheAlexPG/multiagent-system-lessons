@@ -22,7 +22,7 @@ def _get_agent() -> SubAgent:
     return _agent
 
 
-@observe(name="critic_agent")
+@observe(name="Critic")
 def critique(findings: str) -> str:
     """Critique tool for the Supervisor."""
     print(f"\n[Supervisor → Critic]")

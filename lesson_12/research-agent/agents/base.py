@@ -34,7 +34,7 @@ class SubAgent:
                 messages=messages,
                 tools=self.tool_schemas if self.tool_schemas else None,
                 temperature=LLM_TEMPERATURE,
-                name=f"{self.name}_step_{step}",
+                name=self.name,
             )
             msg = response.choices[0].message
 

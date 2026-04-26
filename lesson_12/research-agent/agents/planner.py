@@ -23,7 +23,7 @@ def _get_agent() -> SubAgent:
     return _agent
 
 
-@observe(name="planner_agent")
+@observe(name="Planner")
 def plan(request: str) -> str:
     """Planner tool for the Supervisor."""
     print(f"\n[Supervisor → Planner]")

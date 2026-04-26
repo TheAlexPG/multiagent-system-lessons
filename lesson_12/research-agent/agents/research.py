@@ -22,7 +22,7 @@ def _get_agent() -> SubAgent:
     return _agent
 
 
-@observe(name="researcher_agent")
+@observe(name="Researcher")
 def research(request: str) -> str:
     """Research tool for the Supervisor."""
     print(f"\n[Supervisor → Researcher]")

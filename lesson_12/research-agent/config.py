@@ -8,7 +8,7 @@ from pathlib import Path
 # ── LLM Settings ──────────────────────────────────────────────
 LLM_BASE_URL = "http://192.168.0.146:11434/v1"
 LLM_API_KEY = "REDACTED_LM_KEY"
-LLM_MODEL = "qwen/qwen3.6-27b"
+LLM_MODEL = "google/gemma-4-e4b"
 LLM_TEMPERATURE = 0.3
 
 # ── Langfuse Settings ────────────────────────────────────────

@@ -10,7 +10,7 @@ SESSION_ID = f"session-{uuid.uuid4().hex[:8]}"
 USER_ID = "alex"
 
 
-@observe(name="user_query")
+@observe(name="Research")
 def handle_query(supervisor: Supervisor, user_input: str) -> str:
     """Handle a single user query.
 
@@ -18,14 +18,13 @@ def handle_query(supervisor: Supervisor, user_input: str) -> str:
       input  = user's question (set explicitly via set_current_trace_io)
       output = researcher's findings (the actual research content)
     """
-    # Set clean input on the root trace (just the question, not function args)
     langfuse.set_current_trace_io(input=user_input)
 
     final_answer = supervisor.chat(user_input)
 
-    # Set output = research findings (the useful content), not supervisor's summary
-    research_output = supervisor.last_research_output or final_answer
-    langfuse.set_current_trace_io(output=research_output)
+    # Trace output = full report content (what evaluators should judge)
+    output = supervisor.last_report_content or supervisor.last_research_output or final_answer
+    langfuse.set_current_trace_io(output=output)
 
     return final_answer
 
