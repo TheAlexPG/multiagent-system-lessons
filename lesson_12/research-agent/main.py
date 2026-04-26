@@ -7,7 +7,7 @@ from supervisor import Supervisor
 from langfuse_client import langfuse
 
 SESSION_ID = f"session-{uuid.uuid4().hex[:8]}"
-USER_ID = "alex"
+USER_ID = f"user-{uuid.uuid4().hex[:6]}"
 
 
 @observe(name="Research")
