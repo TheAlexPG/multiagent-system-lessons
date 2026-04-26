@@ -37,16 +37,18 @@ class Supervisor:
 
     def __init__(self):
         self.client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
-        # Load supervisor prompt from Langfuse Prompt Management
         prompt_text = get_prompt(PROMPT_SUPERVISOR)
         self.messages: list[dict] = [
             {"role": "system", "content": prompt_text},
         ]
+        # Track last research output for Langfuse trace
+        self.last_research_output: str = ""
 
     @observe(name="supervisor_turn")
     def chat(self, user_message: str) -> str:
         """Run full supervisor turn. Creates a Langfuse span for the entire turn."""
         self.messages.append({"role": "user", "content": user_message})
+        self.last_research_output = ""
 
         for step in range(1, MAX_ITERATIONS + 1):
             response = self.client.chat.completions.create(
@@ -90,6 +92,10 @@ class Supervisor:
                             result = str(func(**args))
                         except Exception as e:
                             result = f"Error in {name}: {e}"
+
+                # Track research output
+                if name == "research" and result:
+                    self.last_research_output = result
 
                 args_preview = json.dumps(args, ensure_ascii=False)
                 if len(args_preview) > 80:

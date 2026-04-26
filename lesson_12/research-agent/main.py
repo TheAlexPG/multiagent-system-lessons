@@ -6,27 +6,31 @@ from langfuse import observe
 from supervisor import Supervisor
 from langfuse_client import langfuse
 
-# Session and user IDs for Langfuse tracking
 SESSION_ID = f"session-{uuid.uuid4().hex[:8]}"
 USER_ID = "alex"
 
 
 @observe(name="user_query")
 def handle_query(supervisor: Supervisor, user_input: str) -> str:
-    """Handle a single user query. Creates a Langfuse trace with session/user context."""
-    # In langfuse v4, set trace metadata via the Langfuse instance
-    trace_id = langfuse.get_current_trace_id()
-    if trace_id:
-        langfuse.score_current_trace(
-            name="session_tag",
-            value=1,
-            comment=f"session={SESSION_ID}, user={USER_ID}",
-        )
-    return supervisor.chat(user_input)
+    """Handle a single user query.
+
+    Langfuse trace:
+      input  = user's question (set explicitly via set_current_trace_io)
+      output = researcher's findings (the actual research content)
+    """
+    # Set clean input on the root trace (just the question, not function args)
+    langfuse.set_current_trace_io(input=user_input)
+
+    final_answer = supervisor.chat(user_input)
+
+    # Set output = research findings (the useful content), not supervisor's summary
+    research_output = supervisor.last_research_output or final_answer
+    langfuse.set_current_trace_io(output=research_output)
+
+    return final_answer
 
 
 def main():
-    # Set environment-level session/user for all traces in this process
     import os
     os.environ["LANGFUSE_SESSION_ID"] = SESSION_ID
     os.environ["LANGFUSE_USER_ID"] = USER_ID
