@@ -4,16 +4,19 @@ Prompts are loaded from Langfuse Prompt Management — NOT hardcoded here.
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()  # reads .env file
 
 # ── LLM Settings ──────────────────────────────────────────────
-LLM_BASE_URL = "http://192.168.0.146:11434/v1"
-LLM_API_KEY = "REDACTED_LM_KEY"
-LLM_MODEL = "google/gemma-4-e4b"
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://192.168.0.146:11434/v1")
+LLM_API_KEY = os.getenv("LLM_API_KEY", "lm-studio")
+LLM_MODEL = os.getenv("LLM_MODEL", "google/gemma-4-e4b")
 LLM_TEMPERATURE = 0.3
 
 # ── Langfuse Settings ────────────────────────────────────────
-LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "REDACTED_SECRET_KEY")
-LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "REDACTED_PUBLIC_KEY")
+LANGFUSE_SECRET_KEY = os.environ["LANGFUSE_SECRET_KEY"]
+LANGFUSE_PUBLIC_KEY = os.environ["LANGFUSE_PUBLIC_KEY"]
 LANGFUSE_BASE_URL = os.getenv("LANGFUSE_BASE_URL", "https://cloud.langfuse.com")
 
 # ── Agent Settings ────────────────────────────────────────────
