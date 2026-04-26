@@ -1,7 +1,7 @@
 """Entry point — interactive REPL with Langfuse tracing, session & user tracking."""
 
 import uuid
-from langfuse import observe
+from langfuse import observe, propagate_attributes
 
 from supervisor import Supervisor
 from langfuse_client import langfuse
@@ -25,11 +25,6 @@ def handle_query(supervisor: Supervisor, user_input: str) -> str:
 
 
 def main():
-    import os
-    os.environ["LANGFUSE_SESSION_ID"] = SESSION_ID
-    os.environ["LANGFUSE_USER_ID"] = USER_ID
-    os.environ["LANGFUSE_TAGS"] = "lesson-12,multi-agent"
-
     supervisor = Supervisor()
 
     print("=" * 60)
@@ -54,7 +49,12 @@ def main():
             break
 
         print()
-        answer = handle_query(supervisor, user_input)
+        with propagate_attributes(
+            session_id=SESSION_ID,
+            user_id=USER_ID,
+            tags=["lesson-12", "multi-agent"],
+        ):
+            answer = handle_query(supervisor, user_input)
         print(f"\nAgent: {answer}\n")
 
     langfuse.flush()
